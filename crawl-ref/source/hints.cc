@@ -2288,7 +2288,7 @@ string hints_describe_item(const item_def &item)
         case OBJ_SCROLLS:
             ostr << "Press <w>%</w> to read this scroll"
 #ifdef USE_TILE
-                    "or simply click on it with your <w>left mouse button</w>"
+                    " or simply click on it with your <w>left mouse button</w>"
 #endif
                     ".";
             cmd.push_back(CMD_READ);
