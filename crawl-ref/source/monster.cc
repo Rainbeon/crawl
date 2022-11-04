@@ -3041,7 +3041,7 @@ bool monster::missile_repulsion() const
 
 /**
  * How many weapons of the given brand does this monster currently wield?
- * 
+ *
  * @param mon           The monster in question.
  * @param brand         The brand in question.
  * @return              The number of the aforementioned weapons currently
