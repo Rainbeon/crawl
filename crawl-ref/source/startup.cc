@@ -694,6 +694,9 @@ public:
         if (recent_error_messages())
             instructions_text += " (<red>Errors during initialization!</red>)";
 
+        instructions_text +=
+            "\n<white>[esc]</white> quit the game";
+
         m_root->add_child(make_shared<Text>(
                         formatted_string::parse_string(instructions_text)));
 
