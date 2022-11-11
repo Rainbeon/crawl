@@ -419,11 +419,11 @@ static const game_modes_menu_item entries[] =
     {GAME_TYPE_NORMAL, "Dungeon Crawl",
         "Dungeon Crawl: The main game: full of monsters, items, "
         "gods and danger!" },
-    {GAME_TYPE_CUSTOM_SEED, "Choose Game Seed",
+    {GAME_TYPE_CUSTOM_SEED, "Choose Game Seed(first play button)",
         "Play with a chosen custom dungeon seed." },
-    {GAME_TYPE_TUTORIAL, "Tutorial for Dungeon Crawl",
+    {GAME_TYPE_TUTORIAL, "Tutorial for Dungeon Crawl(first play button)",
         "Tutorial that covers the basics of Dungeon Crawl survival." },
-    {GAME_TYPE_HINTS, "Hints Mode for Dungeon Crawl",
+    {GAME_TYPE_HINTS, "Hints Mode for Dungeon Crawl(first play button)",
         "A mostly normal game that provides more advanced hints "
         "than the tutorial."},
     {GAME_TYPE_SPRINT, "Dungeon Sprint",
