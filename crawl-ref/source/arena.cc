@@ -1560,7 +1560,7 @@ static void _choose_arena_teams(newgame_def& choice,
         choice.arena_teams += " t:" + round_input->get_text();
     }
 
-    if (choice.arena_teams.empty())
+    if (choice.arena_teams.empty() || choice.arena_teams == " v ")
         choice.arena_teams = default_arena_teams;
 }
 
