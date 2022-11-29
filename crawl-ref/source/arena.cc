@@ -1522,8 +1522,18 @@ static void _choose_arena_teams(newgame_def& choice,
     prompt.cprintf("  Sigmund\n");
     prompt.cprintf("  99 orc\n");
     prompt.cprintf("  5 rat, 2 wolf, black bear\n");
-    prompt.cprintf("  10 kobold ; scimitar ego:flaming");
+    prompt.cprintf("  10 kobold ; scimitar ego:flaming\n");
     vbox->add_child(make_shared<Text>(move(prompt)));
+
+    auto round_hbox = make_shared<ui::Box>(ui::Box::HORZ);
+    vbox->add_child(round_hbox);
+
+    const string round_prompt_text = "Rounds: ";
+    round_hbox->add_child(make_shared<Text>(round_prompt_text));
+    auto round_input = make_shared<ui::TextEntry>();
+    round_input->set_sync_id("arena_rounds");
+    round_input->set_text("");
+    round_hbox->add_child(round_input);
 
     auto popup = make_shared<ui::Popup>(move(vbox));
 
@@ -1544,6 +1554,12 @@ static void _choose_arena_teams(newgame_def& choice,
                     ? game_exit::death : game_exit::abort);
     }
     choice.arena_teams = team_one_input->get_text() + " v " + team_two_input->get_text();
+
+    if (!round_input->get_text().empty())
+    {
+        choice.arena_teams += " t:" + round_input->get_text();
+    }
+
     if (choice.arena_teams.empty())
         choice.arena_teams = default_arena_teams;
 }
