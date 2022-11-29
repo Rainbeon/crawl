@@ -1500,19 +1500,29 @@ static void _choose_arena_teams(newgame_def& choice,
     arena::skipped_arena_ui = false;
     clear_message_store();
 
-    auto text = make_shared<Text>("Enter your choice of teams:\n ");
+    auto text = make_shared<Text>("Enter your choice for Team 1:\n ");
     auto vbox = make_shared<Box>(ui::Widget::VERT);
     vbox->add_child(text);
     vbox->set_cross_alignment(Widget::Align::STRETCH);
-    auto teams_input = make_shared<ui::TextEntry>();
-    teams_input->set_sync_id("teams");
-    teams_input->set_text(default_arena_teams);
-    vbox->add_child(teams_input);
+    auto team_one_input = make_shared<ui::TextEntry>();
+    team_one_input->set_sync_id("team1");
+    team_one_input->set_text("");
+    vbox->add_child(team_one_input);
+
+    auto text2 = make_shared<Text>("\nEnter your choice for Team 2:\n ");
+    vbox->add_child(text2);
+
+    auto team_two_input = make_shared<ui::TextEntry>();
+    team_two_input->set_sync_id("teams");
+    team_two_input->set_text("");
+    vbox->add_child(team_two_input);
+
     formatted_string prompt;
-    prompt.cprintf("\nExamples:\n");
-    prompt.cprintf("  Sigmund v Jessica\n");
-    prompt.cprintf("  99 orc v the Royal Jelly\n");
-    prompt.cprintf("  20-headed hydra v 10 kobold ; scimitar ego:flaming");
+    prompt.cprintf("\nExample teams:\n");
+    prompt.cprintf("  Sigmund\n");
+    prompt.cprintf("  99 orc\n");
+    prompt.cprintf("  5 rat, 2 wolf, black bear\n");
+    prompt.cprintf("  10 kobold ; scimitar ego:flaming");
     vbox->add_child(make_shared<Text>(move(prompt)));
 
     auto popup = make_shared<ui::Popup>(move(vbox));
@@ -1525,8 +1535,7 @@ static void _choose_arena_teams(newgame_def& choice,
         done = cancel = key_is_escape(ev.key()) || ev.key() == CK_MOUSE_CMD;
         return done;
     });
-
-    ui::run_layout(move(popup), done, teams_input);
+    ui::run_layout(move(popup), done, team_one_input);
 
     if (cancel || crawl_state.seen_hups)
     {
@@ -1534,7 +1543,7 @@ static void _choose_arena_teams(newgame_def& choice,
         game_ended(crawl_state.bypassed_startup_menu
                     ? game_exit::death : game_exit::abort);
     }
-    choice.arena_teams = teams_input->get_text();
+    choice.arena_teams = team_one_input->get_text() + " v " + team_two_input->get_text();
     if (choice.arena_teams.empty())
         choice.arena_teams = default_arena_teams;
 }
