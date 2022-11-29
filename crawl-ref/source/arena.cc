@@ -1500,8 +1500,11 @@ static void _choose_arena_teams(newgame_def& choice,
     arena::skipped_arena_ui = false;
     clear_message_store();
 
-    auto text = make_shared<Text>("Enter your choice for Team 1:\n ");
+    auto title_text = make_shared<Text>(formatted_string("Pit two NPC teams against each other in the Arena!\n", CYAN));
+
+    auto text = make_shared<Text>("Enter your choice for Team 1: ");
     auto vbox = make_shared<Box>(ui::Widget::VERT);
+    vbox->add_child(title_text);
     vbox->add_child(text);
     vbox->set_cross_alignment(Widget::Align::STRETCH);
     auto team_one_input = make_shared<ui::TextEntry>();
@@ -1509,7 +1512,7 @@ static void _choose_arena_teams(newgame_def& choice,
     team_one_input->set_text("");
     vbox->add_child(team_one_input);
 
-    auto text2 = make_shared<Text>("\nEnter your choice for Team 2:\n ");
+    auto text2 = make_shared<Text>("\nEnter your choice for Team 2: ");
     vbox->add_child(text2);
 
     auto team_two_input = make_shared<ui::TextEntry>();
@@ -1534,6 +1537,16 @@ static void _choose_arena_teams(newgame_def& choice,
     round_input->set_sync_id("arena_rounds");
     round_input->set_text("");
     round_hbox->add_child(round_input);
+
+    auto arena_hbox = make_shared<ui::Box>(ui::Box::HORZ);
+    vbox->add_child(arena_hbox);
+
+    const string arena_prompt_text = "Arena: ";
+    arena_hbox->add_child(make_shared<Text>(arena_prompt_text));
+    auto arena_input = make_shared<ui::TextEntry>();
+    arena_input->set_sync_id("arena_selection");
+    arena_input->set_text("");
+    arena_hbox->add_child(arena_input);
 
     auto cl_input_text = make_shared<Text>("\nCommand Line Style Input: ");
     vbox->add_child(cl_input_text);
@@ -1564,8 +1577,8 @@ static void _choose_arena_teams(newgame_def& choice,
         game_ended(crawl_state.bypassed_startup_menu
                     ? game_exit::death : game_exit::abort);
     }
-    bool use_cl = cl_check->checked();
 
+    bool use_cl = cl_check->checked();
     if (!use_cl)
     {
         choice.arena_teams = team_one_input->get_text() + " v " + team_two_input->get_text();
@@ -1573,6 +1586,11 @@ static void _choose_arena_teams(newgame_def& choice,
         if (!round_input->get_text().empty())
         {
             choice.arena_teams += " t:" + round_input->get_text();
+        }
+
+        if (!arena_input->get_text().empty())
+        {
+            choice.arena_teams += " arena:" + arena_input->get_text();
         }
     }
     else
