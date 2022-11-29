@@ -49,6 +49,28 @@ class NoCacheHandler(tornado.web.StaticFileHandler):
         self.set_header("Pragma", "no-cache")
         self.set_header("Expires", "0")
 
+
+_crawl_version = "unknown"
+
+def load_version():
+    global _crawl_version
+    try:
+        # this is the "bad" way to do this. However, the supposedly good ways
+        # to do this are all insanely complicated in ways that are irrelevant
+        # to webtiles.
+        with open(os.path.join(os.path.dirname(__file__), 'version.txt')) as f:
+            _crawl_version = f.readline().strip()
+    except:
+        _crawl_version = "unknown"
+
+
+def version():
+    return "Webtiles (%s) running with Tornado %s and Python %d.%d.%d" % (
+        _crawl_version,
+        tornado.version,
+        sys.version_info[0], sys.version_info[1], sys.version_info[2])
+
+
 def err_exit(errmsg, exc_info=False):
     if exc_info or config.get('logging_config').get('filename'):
         # don't print duplicate messages on stdout
@@ -165,11 +187,25 @@ def bind_server():
     if config.get('no_cache', False):
         settings["static_handler_class"] = NoCacheHandler
 
-    application = tornado.web.Application([
+    handlers = [
             (r"/", MainHandler),
             (r"/socket", ws_handler.CrawlWebSocket),
-            (r"/gamedata/([0-9a-f]*\/.*)", game_data_handler.GameDataHandler)
-            ], gzip=config.get('use_gzip'), **settings)
+            (r"/gamedata/([0-9a-f]*\/.*)", game_data_handler.GameDataHandler)]
+
+    try:
+        # this is somewhat atrocious; the point is so that tornado slow
+        # callback logging actually shows the class name for whatever handler
+        # it is that causes a callback; Otherwise you just get the useless
+        # `RequestHandler._execute`. It would probably be better to explicitly
+        # override `_execute`, but that requires assuming asyncio tornado, and
+        # unfortunately I don't think we're quite there yet.
+        for p in handlers:
+            p[1]._execute.__qualname__ = "%s._execute" % (p[1].__qualname__)
+    except:
+        pass
+
+    application = tornado.web.Application(handlers,
+                                    gzip=config.get('use_gzip'), **settings)
 
     kwargs = {}
     if config.get('http_connection_timeout') is not None:
@@ -324,6 +360,10 @@ def parse_args_main():
 
 # override config with any arguments supplied on the command line
 def export_args_to_config(args):
+    if config.get('live_debug'):
+        config.server_config._load_override_file(os.path.join(
+                            config.get("server_path", ""), "debug-config.yml"))
+        config.do_early_logging() # sigh
     if args.port:
         config.set('bind_nonsecure', True)
         config.set('bind_address', "")  # TODO: ??
@@ -351,9 +391,10 @@ def reset_token_commands(args):
         username = args.reset
 
     user_info = userdb.get_user_info(username)
-
     if not user_info:
         err_exit("Reset/clear password failed; invalid user: %s" % username)
+
+    username = user_info.username # canonicalize
 
     # don't crash on the default config
     if config.get('lobby_url') is None:
@@ -371,10 +412,10 @@ def reset_token_commands(args):
         if not ok:
             err_exit("Error generating password reset token for %s: %s" % (username, msg))
         else:
-            if not user_info[1]:
+            if not user_info.email:
                 logging.warning("No email set for account '%s', use caution!" % username)
             print("Setting a password reset token on account '%s'." % username)
-            print("Email: %s\nMessage body to send to user:\n%s\n" % (user_info[1], msg))
+            print("Email: %s\nMessage body to send to user:\n%s\n" % (username, msg))
             return True
     return False
 
@@ -402,10 +443,10 @@ def show_flags(username):
     if not r:
         err_exit("Unknown user '%s'!" % username)
     # XX would be nice to normalize username
-    if not r[2]:
-        print("User '%s' (id %d) has no flags set." % (username, r[0]))
+    if not r.flags:
+        print("User '%s' (id %d) has no flags set." % (r.username, r.id))
     else:
-        print("Flags for '%s' (id %d): %s" % (username, r[0], userdb.flag_description(r[2])))
+        print("Flags for '%s' (id %d): %s" % (r.username, r.id, userdb.flag_description(r.flags)))
     return True
 
 
@@ -428,7 +469,7 @@ def flag_commands(args):
             print("No matching users.")
         else:
             print("Users with flag '%s': %s" %
-                (userdb.flag_description(flag), ", ".join([u[1] for u in l])))
+                (userdb.flag_description(flag), ", ".join([u.username for u in l])))
         return True
     elif args.set:
         r = userdb.set_flags(args.set, flag, mask=flag)
@@ -453,7 +494,7 @@ def ban_commands(args):
     if args.check_config_bans or args.run_config_bans:
         # potentially very heavy commands on old servers...
         all_users = userdb.get_all_users()
-        affected = [n[1] for n in all_users if not config.check_name(n[1])]
+        affected = [n.username for n in all_users if not config.check_name(n.username)]
         if not affected:
             print("No affected users.")
             return True
@@ -605,10 +646,7 @@ def run_util():
 
     init_logging(config.get('logging_config'))
 
-    if config.get('dgl_mode'):
-        userdb.ensure_user_db_exists()
-        userdb.upgrade_user_db()
-    userdb.ensure_settings_db_exists()
+    userdb.init_db_connections()
 
     mode_fun = None
 
@@ -676,6 +714,9 @@ def run():
 
         if config.get('umask') is not None:
             os.umask(config.get('umask'))
+    except SystemExit:
+        # logging already done, hopefully
+        raise
     except:
         err_exit("Server startup failed!", exc_info=True)
 
@@ -691,10 +732,7 @@ def run():
         # is this ever set to False by anyone in practice?
         dgl_mode = config.get('dgl_mode')
 
-        if dgl_mode:
-            userdb.ensure_user_db_exists()
-            userdb.upgrade_user_db()
-        userdb.ensure_settings_db_exists()
+        userdb.init_db_connections()
 
         signal.signal(signal.SIGUSR1, usr1_handler)
 
@@ -702,8 +740,7 @@ def run():
             IOLoop.current().set_blocking_log_threshold(0.5) # type: ignore
             logging.info("Blocking call timeout: 500ms.")
         except:
-            # this is the new normal; still not sure of a way to deal with this.
-            logging.info("Webserver running without a blocking call timeout.")
+            pass
 
         if dgl_mode:
             ws_handler.status_file_timeout()
@@ -717,17 +754,22 @@ def run():
         ws_handler.do_periodic_lobby_updates()
         webtiles.config.init_config_timeouts()
 
-        logging.info("DCSS Webtiles server started with Tornado %s! (PID: %s)" %
-                                                    (tornado.version, os.getpid()))
+        logging.info("DCSS Webtiles server started! (PID: %s)" % os.getpid())
+        logging.info(version())
 
         IOLoop.current().start()
 
         logging.info("Bye!")
+    except SystemExit:
+        # logging already done, hopefully
+        raise
     except:
         err_exit("Server startup failed!", exc_info=True)
     finally:
         remove_pidfile()
 
+
+load_version()
 
 # TODO: it might be nice to simply make this module runnable, but that would
 # need some way of specifying the config source and `config.server_path`.
