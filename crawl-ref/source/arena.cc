@@ -1513,7 +1513,7 @@ static void _choose_arena_teams(newgame_def& choice,
     vbox->add_child(text2);
 
     auto team_two_input = make_shared<ui::TextEntry>();
-    team_two_input->set_sync_id("teams");
+    team_two_input->set_sync_id("team2");
     team_two_input->set_text("");
     vbox->add_child(team_two_input);
 
@@ -1535,6 +1535,17 @@ static void _choose_arena_teams(newgame_def& choice,
     round_input->set_text("");
     round_hbox->add_child(round_input);
 
+    auto cl_input_text = make_shared<Text>("\nCommand Line Style Input: ");
+    vbox->add_child(cl_input_text);
+    auto cl_input = make_shared<ui::TextEntry>();
+    cl_input->set_sync_id("teams");
+    cl_input->set_text(default_arena_teams);
+    vbox->add_child(cl_input);
+
+    auto cl_check = make_shared<ui::Checkbox>();
+    cl_check->set_child(make_shared<ui::Text>("Use This Input"));
+    vbox->add_child(cl_check);
+
     auto popup = make_shared<ui::Popup>(move(vbox));
 
     bool done = false, cancel = false;
@@ -1553,11 +1564,20 @@ static void _choose_arena_teams(newgame_def& choice,
         game_ended(crawl_state.bypassed_startup_menu
                     ? game_exit::death : game_exit::abort);
     }
-    choice.arena_teams = team_one_input->get_text() + " v " + team_two_input->get_text();
+    bool use_cl = cl_check->checked();
 
-    if (!round_input->get_text().empty())
+    if (!use_cl)
     {
-        choice.arena_teams += " t:" + round_input->get_text();
+        choice.arena_teams = team_one_input->get_text() + " v " + team_two_input->get_text();
+
+        if (!round_input->get_text().empty())
+        {
+            choice.arena_teams += " t:" + round_input->get_text();
+        }
+    }
+    else
+    {
+        choice.arena_teams = cl_input->get_text();
     }
 
     if (choice.arena_teams.empty() || choice.arena_teams == " v ")
